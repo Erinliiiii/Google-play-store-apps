@@ -1,0 +1,117 @@
+setwd("C:/Users/siyue/OneDrive/Desktop/kaggle/google-play-store-apps")
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(Amelia)
+library(GGally)
+#library(reticulate)
+
+###Data Cleaning###
+df <- read.csv("googleplaystore.csv")
+dim(df)
+summary(df)
+#The max rating is 19, which is an error
+#Set the error value to NA
+df[which(df$Rating == 19),] <- NA
+summary(df$Rating)
+str(df)
+head(df)
+
+#Missing Data
+table(df$Rating)
+missmap(df,y.at = c(1), y.labels = c(''), col = c('yellow','black'))
+#We can remove the missing value since the percentile is relativley small
+df <- na.omit(df)
+#check that all the NAs were infact dropped
+missmap(df,y.at = c(1), y.labels = c(''), col = c('yellow','black'))
+dim(df)
+
+#Convert app sizes to MB
+#Replace 'Varies with device' with NA
+varies <- function(x){
+    x <- as.character(x)
+    if (x=='Varies with device'){
+        return(NA)
+    }else{
+        return(x)
+    }
+}
+df$Size <- sapply(df$Size, varies)
+#Remove 'M'
+rm_m <- function(m){
+    m <- as.character(m)
+    if (grepl("M",m)==TRUE){
+        return(gsub('M','',m))
+    }else{
+        return(m)
+    }
+}
+df$Size <- sapply(df$Size, rm_m)
+#replace 'k' and divide by 10^-3
+rp_k <- function(k){
+    k <- as.character(k)
+    if(grepl("k",k)==TRUE){
+        return(as.numeric(gsub('k','',k))/1000)
+    }else{
+        return(k)
+    }
+}
+df$Size <- sapply(df$Size,rp_k)
+
+#Remove $ in price
+rm_s <- function(p){
+    p <- as.character(p)
+    if(grepl("\\$",p)==TRUE){
+        return(gsub('\\$','',p))
+    }else{
+        return(p)
+    }
+}
+df$Price <- sapply(df$Price,rm_s)
+
+#Remove '+' and ',' in 'installs'
+rm_plus <- function(x){
+    x <- as.character(x)
+    if(grepl("\\+",x)==TRUE){
+        return(gsub('\\+','',x))
+    }else{
+        return(x)
+    }
+}
+df$Installs <- sapply(df$Installs,rm_plus)
+
+rm_c <- function(x){
+    x <- as.character(x)
+    if(grepl(",",x)==TRUE){
+        return(gsub(',','',x))
+    }else{
+        return(x)
+    }
+}
+df$Installs <- sapply(df$Installs,rm_c)
+
+df$Size <- sapply(df$Size,as.numeric)
+df$Price <- sapply(df$Price,as.numeric)
+df$Installs <- sapply(df$Installs,as.numeric)
+df$Reviews <- sapply(df$Reviews,as.numeric)
+
+missmap(df,y.at = c(1), y.labels = c(''), col = c('yellow','black'))
+df <- na.omit(df)
+
+####Basic EDA
+#use_python('C:\\Users\\siyue\\AppData\\Local\\Programs\\Python\\Python37-32\\python.exe')
+#sns <- import('seaborn')
+#plt <- import('matplotlib.pyplot')
+#pd <- import('pandas')
+
+#sns$pairplot(r_to_py(iris), hue = 'Species')
+
+
+df2 <- df
+df2$Installs <- log(df2$Installs)
+df2$Reviews <- log(df2$Reviews)
+ggpairs(df2,columns = c('Rating','Size','Installs','Reviews','Price'),
+        mapping=ggplot2::aes(color = Type),
+        lower = list(continuous = wrap('points', alpha = 0.1)),
+        diag = list(continuous = wrap('densityDiag', alpha = 0.3))
+)
